@@ -1,8 +1,8 @@
 # Z-Image
 
-[中文文档](./README.zh.md)
+[中文文档](./README.zh.md) | [Changelog](./CHANGELOG.md)
 
-A modern Text-to-Image generation web application powered by Gitee AI API (z-image-turbo model).
+A modern Text-to-Image generation web application with multiple AI providers (Gitee AI, HuggingFace Spaces).
 
 ![Dark Mode UI](https://img.shields.io/badge/UI-Dark%20Mode-1a1a1a)
 ![Cloudflare Pages](https://img.shields.io/badge/Deploy-Cloudflare%20Pages-F38020)
@@ -11,12 +11,16 @@ A modern Text-to-Image generation web application powered by Gitee AI API (z-ima
 
 ## Features
 
-- Dark mode Gradio-style UI
+- Dark mode Gradio-style UI with frosted glass effects
+- Multiple API providers: Gitee AI, HF Z-Image Turbo, HF Qwen Image
 - Multiple aspect ratio presets (1:1, 16:9, 9:16, 4:3, 3:4, etc.)
 - Adjustable inference steps and dimensions
+- 4x image upscaling via RealESRGAN
 - Real-time generation progress with timer
+- Floating toolbar with blur, info, download, delete actions
 - One-click image download (JPG)
-- API key persistence in browser
+- API key persistence in browser (AES-256-GCM encrypted)
+- Settings persistence in localStorage
 - Responsive design (mobile & desktop)
 
 ## Tech Stack

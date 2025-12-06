@@ -16,6 +16,13 @@ import {
 } from "@/components/ui/accordion";
 import { toast } from "sonner";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   ImageIcon,
   Download,
   Sparkles,
@@ -25,6 +32,10 @@ import {
   Settings,
   Loader2,
   RotateCcw,
+  Info,
+  Trash2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 const DEFAULT_PROMPT =
@@ -90,39 +101,129 @@ function saveSettings(settings: Record<string, unknown>) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
 }
 
+type ApiProvider = "gitee" | "hf-zimage" | "hf-qwen";
+
 export default function ImageGenerator() {
   const [apiKey, setApiKey] = useState("");
-  const [prompt, setPrompt] = useState(() => loadSettings().prompt ?? DEFAULT_PROMPT);
-  const [negativePrompt, setNegativePrompt] = useState(() => loadSettings().negativePrompt ?? DEFAULT_NEGATIVE_PROMPT);
+  const [hfToken, setHfToken] = useState("");
+  const [apiProvider, setApiProvider] = useState<ApiProvider>(
+    () => loadSettings().apiProvider ?? "gitee"
+  );
+  const [prompt, setPrompt] = useState(
+    () => loadSettings().prompt ?? DEFAULT_PROMPT
+  );
+  const [negativePrompt, setNegativePrompt] = useState(
+    () => loadSettings().negativePrompt ?? DEFAULT_NEGATIVE_PROMPT
+  );
   const [model] = useState("z-image-turbo");
   const [width, setWidth] = useState(() => loadSettings().width ?? 1024);
   const [height, setHeight] = useState(() => loadSettings().height ?? 1024);
   const [steps, setSteps] = useState(() => loadSettings().steps ?? 9);
   const [loading, setLoading] = useState(false);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(() =>
+    localStorage.getItem("lastImageUrl")
+  );
   const [status, setStatus] = useState("Ready.");
   const [elapsed, setElapsed] = useState(0);
-  const [selectedRatio, setSelectedRatio] = useState(() => loadSettings().selectedRatio ?? "1:1");
+  const [selectedRatio, setSelectedRatio] = useState(
+    () => loadSettings().selectedRatio ?? "1:1"
+  );
   const [uhd, setUhd] = useState(() => loadSettings().uhd ?? false);
+  const [upscale8k] = useState(() => loadSettings().upscale8k ?? false);
+  const [showInfo, setShowInfo] = useState(false);
+  const [isBlurred, setIsBlurred] = useState(false);
+  const [isUpscaled, setIsUpscaled] = useState(false);
+  const [isUpscaling, setIsUpscaling] = useState(false);
   const initialized = useRef(false);
 
   useEffect(() => {
     if (!initialized.current) {
       initialized.current = true;
       decryptFromStore().then(setApiKey);
+      // Decrypt HF Token
+      const stored = localStorage.getItem("hfToken");
+      if (stored) {
+        try {
+          const { iv, data } = JSON.parse(stored);
+          crypto.subtle.importKey("raw", new TextEncoder().encode(navigator.userAgent), "PBKDF2", false, ["deriveKey"])
+            .then(key => crypto.subtle.deriveKey(
+              { name: "PBKDF2", salt: new TextEncoder().encode("hf-salt"), iterations: 100000, hash: "SHA-256" },
+              key, { name: "AES-GCM", length: 256 }, false, ["decrypt"]
+            ))
+            .then(derivedKey => crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(iv) }, derivedKey, new Uint8Array(data)))
+            .then(decrypted => setHfToken(new TextDecoder().decode(decrypted)))
+            .catch(() => localStorage.removeItem("hfToken"));
+        } catch {
+          localStorage.removeItem("hfToken");
+        }
+      }
     }
   }, []);
 
   useEffect(() => {
     if (initialized.current) {
-      saveSettings({ prompt, negativePrompt, width, height, steps, selectedRatio, uhd });
+      saveSettings({
+        prompt,
+        negativePrompt,
+        width,
+        height,
+        steps,
+        selectedRatio,
+        uhd,
+        upscale8k,
+        apiProvider,
+      });
     }
-  }, [prompt, negativePrompt, width, height, steps, selectedRatio, uhd]);
+  }, [
+    prompt,
+    negativePrompt,
+    width,
+    height,
+    steps,
+    selectedRatio,
+    uhd,
+    upscale8k,
+    apiProvider,
+  ]);
+
+  useEffect(() => {
+    if (imageUrl) {
+      localStorage.setItem("lastImageUrl", imageUrl);
+    } else {
+      localStorage.removeItem("lastImageUrl");
+    }
+  }, [imageUrl]);
 
   const saveApiKey = (key: string) => {
     setApiKey(key);
     encryptAndStore(key);
     if (key) toast.success("API Key saved");
+  };
+
+  const saveHfToken = async (token: string) => {
+    setHfToken(token);
+    if (token) {
+      const key = await crypto.subtle.importKey(
+        "raw",
+        new TextEncoder().encode(navigator.userAgent),
+        "PBKDF2",
+        false,
+        ["deriveKey"]
+      );
+      const derivedKey = await crypto.subtle.deriveKey(
+        { name: "PBKDF2", salt: new TextEncoder().encode("hf-salt"), iterations: 100000, hash: "SHA-256" },
+        key,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["encrypt"]
+      );
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, derivedKey, new TextEncoder().encode(token));
+      localStorage.setItem("hfToken", JSON.stringify({ iv: Array.from(iv), data: Array.from(new Uint8Array(encrypted)) }));
+      toast.success("HF Token saved");
+    } else {
+      localStorage.removeItem("hfToken");
+    }
   };
 
   useEffect(() => {
@@ -161,57 +262,158 @@ export default function ImageGenerator() {
     a.click();
   };
 
+  const handleUpscale = async () => {
+    if (!imageUrl || isUpscaling || isUpscaled) return;
+    setIsUpscaling(true);
+    addStatus("Upscaling to 4x...");
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL || ""}/api/upscale`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(hfToken && { "X-HF-Token": hfToken }),
+          },
+          body: JSON.stringify({ url: imageUrl, scale: 4 }),
+        }
+      );
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setImageUrl(data.url);
+        setIsUpscaled(true);
+        addStatus("4x upscale complete!");
+        toast.success("Image upscaled to 4x!");
+      } else {
+        addStatus(`Upscale failed: ${data.error || "Unknown error"}`);
+        toast.error("Upscale failed");
+      }
+    } catch (err) {
+      addStatus(
+        `Upscale failed: ${
+          err instanceof Error ? err.message : "Unknown error"
+        }`
+      );
+      toast.error("Upscale failed");
+    } finally {
+      setIsUpscaling(false);
+    }
+  };
+
+  const handleDelete = () => {
+    setImageUrl(null);
+    setIsUpscaled(false);
+    setIsBlurred(false);
+    setShowInfo(false);
+    toast.success("Image deleted");
+  };
+
   const handleGenerate = async () => {
-    if (!apiKey) {
+    if (apiProvider === "gitee" && !apiKey) {
       toast.error("Please configure your API Key first");
       return;
     }
 
     setLoading(true);
     setImageUrl(null);
+    setIsUpscaled(false);
+    setIsBlurred(false);
+    setShowInfo(false);
     setStatus("Initializing...");
 
     try {
-      addStatus("Sending request...");
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL || ""}/api/generate`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-API-Key": apiKey,
-          },
-          body: JSON.stringify({
-            prompt,
-            negative_prompt: negativePrompt,
-            model,
-            width,
-            height,
-            num_inference_steps: steps,
-          }),
-        }
-      );
+      let generatedUrl: string | undefined;
 
-      const text = await res.text();
-      let data: { url?: string; b64_json?: string; error?: string };
-      try {
-        data = text ? JSON.parse(text) : {};
-      } catch {
-        throw new Error(text || "Invalid response from server");
+      if (apiProvider === "gitee") {
+        addStatus("Sending request to Gitee AI...");
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL || ""}/api/generate`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-API-Key": apiKey,
+            },
+            body: JSON.stringify({
+              prompt,
+              negative_prompt: negativePrompt,
+              model,
+              width,
+              height,
+              num_inference_steps: steps,
+            }),
+          }
+        );
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to generate image");
+
+        generatedUrl =
+          data.url ||
+          (data.b64_json
+            ? `data:image/png;base64,${data.b64_json}`
+            : undefined);
+      } else {
+        addStatus(`Sending request to HF Spaces (${apiProvider})...`);
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL || ""}/api/generate-hf`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(hfToken && { "X-HF-Token": hfToken }),
+            },
+            body: JSON.stringify({
+              prompt,
+              width,
+              height,
+              model: apiProvider === "hf-qwen" ? "qwen" : "zimage",
+            }),
+          }
+        );
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to generate image");
+        generatedUrl = data.url;
       }
 
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to generate image");
-      }
-
+      if (!generatedUrl) throw new Error("No image returned");
       addStatus("Image generated!");
 
-      if (data.url) {
-        setImageUrl(data.url);
-      } else if (data.b64_json) {
-        setImageUrl(`data:image/png;base64,${data.b64_json}`);
+      if (upscale8k && generatedUrl.startsWith("http")) {
+        addStatus("Upscaling to 8K...");
+        try {
+          const upRes = await fetch(
+            `${import.meta.env.VITE_API_URL || ""}/api/upscale`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...(hfToken && { "X-HF-Token": hfToken }),
+              },
+              body: JSON.stringify({ url: generatedUrl, scale: 4 }),
+            }
+          );
+
+          const upData = await upRes.json();
+          if (upRes.ok && upData.url) {
+            generatedUrl = upData.url;
+            addStatus("8K upscale complete!");
+          } else {
+            addStatus(`8K upscale failed: ${upData.error || "Unknown error"}`);
+            toast.error("8K upscale failed, showing original image");
+          }
+        } catch (upErr) {
+          addStatus(
+            `8K upscale failed: ${
+              upErr instanceof Error ? upErr.message : "Unknown error"
+            }`
+          );
+          toast.error("8K upscale failed, showing original image");
+        }
       }
 
+      setImageUrl(generatedUrl ?? null);
       toast.success("Image generated!");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "An error occurred";
@@ -260,24 +462,58 @@ export default function ImageGenerator() {
                   <AccordionContent>
                     <div className="space-y-3 pb-2">
                       <div>
-                        <Label className="text-zinc-400 text-xs">API Key</Label>
-                        <Input
-                          type="password"
-                          placeholder="Enter your Gitee AI API Key..."
-                          value={apiKey}
-                          onChange={(e) => setApiKey(e.target.value)}
-                          onBlur={(e) => saveApiKey(e.target.value)}
-                          className="mt-1 bg-zinc-950 border-zinc-800 text-zinc-100 placeholder:text-zinc-600"
-                        />
+                        <Label className="text-zinc-400 text-xs">
+                          API Provider
+                        </Label>
+                        <Select
+                          value={apiProvider}
+                          onValueChange={(v) =>
+                            setApiProvider(v as ApiProvider)
+                          }
+                        >
+                          <SelectTrigger className="mt-1 bg-zinc-950 border-zinc-800 text-zinc-100">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-zinc-900/70 backdrop-blur-md border-zinc-700">
+                            <SelectItem value="gitee">Gitee AI</SelectItem>
+                            <SelectItem value="hf-zimage">
+                              HF Z-Image Turbo
+                            </SelectItem>
+                            <SelectItem value="hf-qwen">
+                              HF Qwen Image
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <div>
-                        <Label className="text-zinc-400 text-xs">Model</Label>
-                        <Input
-                          value={model}
-                          disabled
-                          className="mt-1 bg-zinc-950 border-zinc-800 text-zinc-500 cursor-not-allowed"
-                        />
-                      </div>
+                      {apiProvider === "gitee" ? (
+                        <div>
+                          <Label className="text-zinc-400 text-xs">
+                            Gitee API Key
+                          </Label>
+                          <Input
+                            type="password"
+                            placeholder="Enter your Gitee AI API Key..."
+                            value={apiKey}
+                            onChange={(e) => setApiKey(e.target.value)}
+                            onBlur={(e) => saveApiKey(e.target.value)}
+                            className="mt-1 bg-zinc-950 border-zinc-800 text-zinc-100 placeholder:text-zinc-600"
+                          />
+                        </div>
+                      ) : (
+                        <div>
+                          <Label className="text-zinc-400 text-xs">
+                            HF Token (Optional)
+                          </Label>
+                          <Input
+                            type="password"
+                            placeholder="For extra quota..."
+                            value={hfToken}
+                            onChange={(e) => setHfToken(e.target.value)}
+                            onBlur={(e) => saveHfToken(e.target.value)}
+                            className="mt-1 bg-zinc-950 border-zinc-800 text-zinc-100 placeholder:text-zinc-600"
+                          />
+                        </div>
+                      )}
                     </div>
                   </AccordionContent>
                 </AccordionItem>
@@ -322,7 +558,10 @@ export default function ImageGenerator() {
                           </div>
                           <div>
                             <Label className="text-zinc-400 text-xs flex items-center gap-2">
-                              <RotateCcw className="w-3 h-3 cursor-pointer hover:text-orange-400" onClick={() => setSteps(9)} />
+                              <RotateCcw
+                                className="w-3 h-3 cursor-pointer hover:text-orange-400"
+                                onClick={() => setSteps(9)}
+                              />
                               Inference Steps:{" "}
                               <span className="text-orange-400 font-mono">
                                 {steps}
@@ -348,15 +587,21 @@ export default function ImageGenerator() {
                       <Label className="text-zinc-300 text-sm font-medium">
                         Aspect Ratio
                       </Label>
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor="uhd" className="text-zinc-400 text-x">
-                          UHD / 2K
-                        </Label>
-                        <Switch
-                          id="uhd"
-                          checked={uhd}
-                          onCheckedChange={handleUhdToggle}
-                        />
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <Label
+                            htmlFor="uhd"
+                            className="text-zinc-400 text-xs"
+                          >
+                            UHD / 2K
+                          </Label>
+                          <Switch
+                            id="uhd"
+                            checked={uhd}
+                            className={`" data-[state=unchecked]:[&>span]:bg-zinc-500 data-[state=checked]:[&>span]:bg-yellow-400 uhd ? "bg-orange-500" : "border-xl border-zinc-800"`}
+                            onCheckedChange={handleUhdToggle}
+                          />
+                        </div>
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -387,10 +632,18 @@ export default function ImageGenerator() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label className="text-zinc-400 text-xs flex items-center gap-2">
-                        <RotateCcw className="w-3 h-3 cursor-pointer hover:text-orange-400" onClick={() => {
-                          const ratio = ASPECT_RATIOS.find(r => r.label === selectedRatio)
-                          if (ratio) setWidth(uhd ? ratio.presets[1].w : ratio.presets[0].w)
-                        }} />
+                        <RotateCcw
+                          className="w-3 h-3 cursor-pointer hover:text-orange-400"
+                          onClick={() => {
+                            const ratio = ASPECT_RATIOS.find(
+                              (r) => r.label === selectedRatio
+                            );
+                            if (ratio)
+                              setWidth(
+                                uhd ? ratio.presets[1].w : ratio.presets[0].w
+                              );
+                          }}
+                        />
                         Width:{" "}
                         <span className="text-orange-400 font-mono">
                           {width}px
@@ -407,10 +660,18 @@ export default function ImageGenerator() {
                     </div>
                     <div>
                       <Label className="text-zinc-400 text-xs flex items-center gap-2">
-                        <RotateCcw className="w-3 h-3 cursor-pointer hover:text-orange-400" onClick={() => {
-                          const ratio = ASPECT_RATIOS.find(r => r.label === selectedRatio)
-                          if (ratio) setHeight(uhd ? ratio.presets[1].h : ratio.presets[0].h)
-                        }} />
+                        <RotateCcw
+                          className="w-3 h-3 cursor-pointer hover:text-orange-400"
+                          onClick={() => {
+                            const ratio = ASPECT_RATIOS.find(
+                              (r) => r.label === selectedRatio
+                            );
+                            if (ratio)
+                              setHeight(
+                                uhd ? ratio.presets[1].h : ratio.presets[0].h
+                              );
+                          }}
+                        />
                         Height:{" "}
                         <span className="text-orange-400 font-mono">
                           {height}px
@@ -459,9 +720,109 @@ export default function ImageGenerator() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="relative rounded-lg overflow-hidden bg-zinc-900 border border-zinc-800">
+                  <div className="relative rounded-lg overflow-hidden bg-zinc-900 border border-zinc-800 group">
                     {imageUrl ? (
-                      <img src={imageUrl} alt="Generated" className="w-full" />
+                      <>
+                        <img
+                          src={imageUrl}
+                          alt="Generated"
+                          className={`w-full transition-all duration-300 ${
+                            isBlurred ? "blur-xl" : ""
+                          }`}
+                        />
+                        {/* Floating Toolbar */}
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 pointer-events-none">
+                          <div className="pointer-events-auto flex items-center gap-1 p-1.5 rounded-2xl bg-black/60 backdrop-blur-md border border-white/10 shadow-2xl transition-opacity duration-300 opacity-100 md:opacity-0 md:group-hover:opacity-100">
+                            {/* Info */}
+                            <button
+                              onClick={() => setShowInfo(!showInfo)}
+                              title="Details"
+                              className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all ${
+                                showInfo
+                                  ? "bg-orange-600 text-white"
+                                  : "text-white/70 hover:text-white hover:bg-white/10"
+                              }`}
+                            >
+                              <Info className="w-5 h-5" />
+                            </button>
+                            <div className="w-px h-5 bg-white/10" />
+                            {/* 4x Upscale */}
+                            <button
+                              onClick={handleUpscale}
+                              disabled={isUpscaling || isUpscaled}
+                              title={
+                                isUpscaling
+                                  ? "Upscaling..."
+                                  : isUpscaled
+                                  ? "Already upscaled"
+                                  : "4x Upscale"
+                              }
+                              className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all ${
+                                isUpscaled
+                                  ? "text-orange-400 bg-orange-500/10"
+                                  : "text-white/70 hover:text-white hover:bg-white/10"
+                              } disabled:cursor-not-allowed`}
+                            >
+                              {isUpscaling ? (
+                                <Loader2 className="w-5 h-5 animate-spin text-orange-400" />
+                              ) : (
+                                <span className="text-xs font-bold">4x</span>
+                              )}
+                            </button>
+                            <div className="w-px h-5 bg-white/10" />
+                            {/* Blur Toggle */}
+                            <button
+                              onClick={() => setIsBlurred(!isBlurred)}
+                              title="Toggle Blur"
+                              className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all ${
+                                isBlurred
+                                  ? "text-orange-400 bg-white/10"
+                                  : "text-white/70 hover:text-white hover:bg-white/10"
+                              }`}
+                            >
+                              {isBlurred ? (
+                                <EyeOff className="w-5 h-5" />
+                              ) : (
+                                <Eye className="w-5 h-5" />
+                              )}
+                            </button>
+                            <div className="w-px h-5 bg-white/10" />
+                            {/* Download */}
+                            <button
+                              onClick={handleDownload}
+                              title="Download"
+                              className="flex items-center justify-center w-10 h-10 rounded-xl transition-all text-white/70 hover:text-white hover:bg-white/10"
+                            >
+                              <Download className="w-5 h-5" />
+                            </button>
+                            {/* Delete */}
+                            <button
+                              onClick={handleDelete}
+                              title="Delete"
+                              className="flex items-center justify-center w-10 h-10 rounded-xl transition-all text-white/70 hover:text-red-400 hover:bg-red-500/10"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
+                        {/* Info Panel */}
+                        {showInfo && (
+                          <div className="absolute top-3 left-3 right-3 p-3 rounded-xl bg-black/70 backdrop-blur-md border border-white/10 text-xs text-zinc-300 space-y-1">
+                            <div>
+                              <span className="text-zinc-500">Size:</span>{" "}
+                              {width}×{height}
+                            </div>
+                            <div>
+                              <span className="text-zinc-500">API:</span>{" "}
+                              {apiProvider}
+                            </div>
+                            <div>
+                              <span className="text-zinc-500">Upscaled:</span>{" "}
+                              {isUpscaled ? "Yes (4x)" : "No"}
+                            </div>
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <div className="aspect-square flex flex-col items-center justify-center text-zinc-600">
                         {loading ? (
@@ -485,15 +846,6 @@ export default function ImageGenerator() {
                       </div>
                     )}
                   </div>
-                  {imageUrl && (
-                    <Button
-                      onClick={handleDownload}
-                      variant="outline"
-                      className="w-full mt-3 border-zinc-800 text-zinc-400 hover:bg-zinc-900 hover:text-zinc-300"
-                    >
-                      <Download className="w-4 h-4 mr-2" /> Download
-                    </Button>
-                  )}
                 </CardContent>
               </Card>
 
