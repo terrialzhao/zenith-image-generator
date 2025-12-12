@@ -1,7 +1,7 @@
 import { memo, useEffect, useState, useRef } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { Loader2 } from 'lucide-react'
-import { decryptFromStore } from '@/lib/crypto'
+import { decryptTokenFromStore } from '@/lib/crypto'
 
 export type SingleImageNodeData = {
   prompt: string
@@ -54,7 +54,7 @@ function SingleImageNode({ data }: NodeProps) {
   const generatingRef = useRef(false)
 
   useEffect(() => {
-    decryptFromStore().then((key) => setApiKey(key || null))
+    decryptTokenFromStore('gitee').then((key: string) => setApiKey(key || null))
   }, [])
 
   useEffect(() => {
