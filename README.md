@@ -75,19 +75,19 @@ curl -X POST https://your-project.pages.dev/api/generate \
 
 ## Documentation
 
-| Doc | Description |
-|-----|-------------|
-| [Contributing](./CONTRIBUTING.md) | Local setup, LAN access, development |
-| [Deployment](./docs/en/DEPLOYMENT.md) | Cloudflare, Vercel, Netlify guides |
-| [API Reference](./docs/en/API.md) | Endpoints, parameters, code examples |
+| Doc                                       | Description                          |
+| ----------------------------------------- | ------------------------------------ |
+| [Contributing](./docs/en/CONTRIBUTING.md) | Local setup, LAN access, development |
+| [Deployment](./docs/en/DEPLOYMENT.md)     | Cloudflare, Vercel, Netlify guides   |
+| [API Reference](./docs/en/API.md)         | Endpoints, parameters, code examples |
 
 ## Tech Stack
 
-| Layer | Tech |
-|-------|------|
+| Layer    | Tech                                    |
+| -------- | --------------------------------------- |
 | Frontend | React 19, Vite, Tailwind CSS, shadcn/ui |
-| Backend | Hono (TypeScript) |
-| Deploy | Cloudflare Pages, Vercel, Netlify |
+| Backend  | Hono (TypeScript)                       |
+| Deploy   | Cloudflare Pages, Vercel, Netlify       |
 
 ## License
 

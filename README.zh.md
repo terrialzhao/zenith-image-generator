@@ -60,19 +60,19 @@ pnpm dev:web
 
 ## 文档
 
-| 文档 | 描述 |
-|------|------|
-| [贡献指南](./CONTRIBUTING.md) | 本地配置、局域网访问、开发 |
-| [部署指南](./docs/zh/DEPLOYMENT.md) | Cloudflare、Vercel、Netlify 教程 |
-| [API 参考](./docs/zh/API.md) | 接口、参数、代码示例 |
+| 文档                                  | 描述                             |
+| ------------------------------------- | -------------------------------- |
+| [贡献指南](./docs/zh/CONTRIBUTING.md) | 本地配置、局域网访问、开发       |
+| [部署指南](./docs/zh/DEPLOYMENT.md)   | Cloudflare、Vercel、Netlify 教程 |
+| [API 参考](./docs/zh/API.md)          | 接口、参数、代码示例             |
 
 ## 技术栈
 
-| 层级 | 技术 |
-|------|------|
+| 层级 | 技术                                    |
+| ---- | --------------------------------------- |
 | 前端 | React 19, Vite, Tailwind CSS, shadcn/ui |
-| 后端 | Hono (TypeScript) |
-| 部署 | Cloudflare Pages + Functions |
+| 后端 | Hono (TypeScript)                       |
+| 部署 | Cloudflare Pages + Functions            |
 
 ## 许可证
 
