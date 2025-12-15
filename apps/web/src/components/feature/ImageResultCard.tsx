@@ -29,6 +29,7 @@ interface ImageResultCardProps {
   isBlurred: boolean
   isUpscaled: boolean
   isUpscaling: boolean
+  giteeToken?: string
   setShowInfo: (v: boolean) => void
   setIsBlurred: (v: boolean) => void
   handleUpscale: () => void
@@ -44,6 +45,7 @@ export function ImageResultCard({
   isBlurred,
   isUpscaled,
   isUpscaling: externalIsUpscaling,
+  giteeToken,
   setShowInfo,
   setIsBlurred,
   handleUpscale: _externalHandleUpscale,
@@ -129,7 +131,6 @@ export function ImageResultCard({
   const handleGenerateVideo = useCallback(async () => {
     if (!currentImageUrl || !imageDetails) return
 
-    const giteeToken = localStorage.getItem('gitee_token')
     if (!giteeToken) {
       toast.error('Please configure Gitee AI token first')
       return
@@ -140,7 +141,7 @@ export function ImageResultCard({
 
     toast.info('Starting video generation...')
     await generateVideo(currentImageUrl, imageDetails.prompt, width, height, 'gitee', giteeToken)
-  }, [currentImageUrl, imageDetails, generateVideo])
+  }, [currentImageUrl, imageDetails, generateVideo, giteeToken])
 
   // Show video when generation succeeds
   useEffect(() => {
