@@ -8,13 +8,12 @@ import {
   ReactFlowProvider,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { ArrowLeft, Download, Github, Loader2, Settings, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Download, Github, Loader2, Settings, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ApiConfigAccordion } from '@/components/feature/ApiConfigAccordion'
-import { LLMSettingsAccordion } from '@/components/feature/LLMSettingsAccordion'
+import { SettingsModal } from '@/components/feature/SettingsModal'
 import { ConfigNode } from '@/components/flow/ConfigNode'
 import { FlowInput } from '@/components/flow/FlowInput'
 import { ImageNode } from '@/components/flow/ImageNode'
@@ -516,48 +515,28 @@ function FlowCanvas() {
         </div>
       </div>
 
-      {/* Settings Modal */}
-      {showSettings && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 w-full max-w-md mx-4 max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-zinc-100 font-medium">{t('apiConfig.settings')}</h2>
-              <button
-                type="button"
-                onClick={() => setShowSettings(false)}
-                className="text-zinc-500 hover:text-zinc-300"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <ApiConfigAccordion
-                provider={provider}
-                model={model}
-                currentToken={tokens[provider]}
-                availableModels={getModelsByProvider(provider)}
-                setProvider={(p) => {
-                  setProvider(p)
-                  updateSettings({ provider: p })
-                }}
-                setModel={(m) => {
-                  setModel(m)
-                  updateSettings({ model: m })
-                }}
-                saveToken={saveToken}
-              />
-
-              <LLMSettingsAccordion
-                llmSettings={llmSettings}
-                setLLMProvider={setLLMProvider}
-                setLLMModel={setLLMModel}
-                setAutoTranslate={setAutoTranslate}
-                setCustomSystemPrompt={setCustomSystemPrompt}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        provider={provider}
+        model={model}
+        currentToken={tokens[provider]}
+        availableModels={getModelsByProvider(provider)}
+        setProvider={(p) => {
+          setProvider(p)
+          updateSettings({ provider: p })
+        }}
+        setModel={(m) => {
+          setModel(m)
+          updateSettings({ model: m })
+        }}
+        saveToken={saveToken}
+        llmSettings={llmSettings}
+        setLLMProvider={setLLMProvider}
+        setLLMModel={setLLMModel}
+        setAutoTranslate={setAutoTranslate}
+        setCustomSystemPrompt={setCustomSystemPrompt}
+      />
 
       {/* Flow Input */}
       <FlowInput
