@@ -64,10 +64,7 @@ export default function ImageGenerator() {
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="p-6">
         <div className="max-w-7xl mx-auto">
-          <Header
-            onSettingsClick={() => setShowSettings(true)}
-            hasToken={!!currentToken}
-          />
+          <Header onSettingsClick={() => setShowSettings(true)} hasToken={!!currentToken} />
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             {/* Left Panel - Controls */}

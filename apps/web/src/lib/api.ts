@@ -60,10 +60,7 @@ interface ApiError extends Error {
 }
 
 /** Generic fetch wrapper with error handling */
-async function apiRequest<T>(
-  url: string,
-  options: RequestInit
-): Promise<T> {
+async function apiRequest<T>(url: string, options: RequestInit): Promise<T> {
   const response = await fetch(url, options)
 
   let data: unknown
@@ -280,7 +277,14 @@ async function optimizePromptSingle(
   options: OptimizeOptions,
   token: string | null
 ): Promise<OptimizeResponse> {
-  const { prompt, provider = 'pollinations', lang = 'en', model, systemPrompt, customConfig } = options
+  const {
+    prompt,
+    provider = 'pollinations',
+    lang = 'en',
+    model,
+    systemPrompt,
+    customConfig,
+  } = options
 
   const providerConfig = LLM_PROVIDER_CONFIGS[provider]
   const headers: HeadersInit = { 'Content-Type': 'application/json' }
@@ -516,11 +520,14 @@ export async function createVideoTask(
   token: string
 ): Promise<ApiResponse<{ taskId: string; status: string }>> {
   try {
-    const data = await apiRequest<{ taskId: string; status: string }>(`${API_URL}/api/video/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-API-Key': token },
-      body: JSON.stringify(options),
-    })
+    const data = await apiRequest<{ taskId: string; status: string }>(
+      `${API_URL}/api/video/generate`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': token },
+        body: JSON.stringify(options),
+      }
+    )
     return { success: true, data }
   } catch (err) {
     return {

@@ -408,10 +408,14 @@ export function useImageGenerator() {
         {
           prompt,
           provider: llmSettings.llmProvider,
-          model: llmSettings.llmProvider === 'custom' ? llmSettings.customOptimizeConfig.model : llmSettings.llmModel,
+          model:
+            llmSettings.llmProvider === 'custom'
+              ? llmSettings.customOptimizeConfig.model
+              : llmSettings.llmModel,
           lang: 'en',
           systemPrompt: getEffectiveSystemPrompt(llmSettings.customSystemPrompt),
-          customConfig: llmSettings.llmProvider === 'custom' ? llmSettings.customOptimizeConfig : undefined,
+          customConfig:
+            llmSettings.llmProvider === 'custom' ? llmSettings.customOptimizeConfig : undefined,
         },
         tokens.length > 0 ? tokens : undefined
       )
@@ -446,8 +450,14 @@ export function useImageGenerator() {
         {
           prompt,
           provider: llmSettings.translateProvider,
-          model: llmSettings.translateProvider === 'custom' ? llmSettings.customTranslateConfig.model : llmSettings.translateModel,
-          customConfig: llmSettings.translateProvider === 'custom' ? llmSettings.customTranslateConfig : undefined,
+          model:
+            llmSettings.translateProvider === 'custom'
+              ? llmSettings.customTranslateConfig.model
+              : llmSettings.translateModel,
+          customConfig:
+            llmSettings.translateProvider === 'custom'
+              ? llmSettings.customTranslateConfig
+              : undefined,
         },
         tokens.length > 0 ? tokens : undefined
       )

@@ -210,7 +210,10 @@ export function createApp(config: AppConfig = {}) {
         if (response.status === 401) {
           return sendError(c, Errors.authInvalid('Custom Provider'))
         }
-        return sendError(c, Errors.providerError('Custom Provider', `Failed to fetch models: ${errorText}`))
+        return sendError(
+          c,
+          Errors.providerError('Custom Provider', `Failed to fetch models: ${errorText}`)
+        )
       }
 
       const data = (await response.json()) as { data?: Array<{ id: string; owned_by?: string }> }
@@ -222,7 +225,13 @@ export function createApp(config: AppConfig = {}) {
 
       return c.json({ models })
     } catch (err) {
-      return sendError(c, Errors.providerError('Custom Provider', err instanceof Error ? err.message : 'Failed to fetch models'))
+      return sendError(
+        c,
+        Errors.providerError(
+          'Custom Provider',
+          err instanceof Error ? err.message : 'Failed to fetch models'
+        )
+      )
     }
   })
 
@@ -235,7 +244,14 @@ export function createApp(config: AppConfig = {}) {
       return sendError(c, Errors.invalidParams('body', 'Invalid JSON body'))
     }
 
-    const { prompt, provider = 'pollinations', lang = 'en', model, systemPrompt, customConfig } = body
+    const {
+      prompt,
+      provider = 'pollinations',
+      lang = 'en',
+      model,
+      systemPrompt,
+      customConfig,
+    } = body
 
     // Validate prompt
     if (!prompt || typeof prompt !== 'string') {
@@ -265,7 +281,13 @@ export function createApp(config: AppConfig = {}) {
     // Validate custom config for custom provider
     if (provider === 'custom') {
       if (!customConfig?.baseUrl || !customConfig?.apiKey || !customConfig?.model) {
-        return sendError(c, Errors.invalidParams('customConfig', 'Custom provider requires baseUrl, apiKey, and model'))
+        return sendError(
+          c,
+          Errors.invalidParams(
+            'customConfig',
+            'Custom provider requires baseUrl, apiKey, and model'
+          )
+        )
       }
     }
 
@@ -277,20 +299,31 @@ export function createApp(config: AppConfig = {}) {
       const llmProvider = getLLMProvider(provider as LLMProviderType)
 
       // Custom provider needs customConfig passed to complete()
-      const result = provider === 'custom'
-        ? await (llmProvider as unknown as { complete: (req: Parameters<typeof llmProvider.complete>[0], config?: typeof customConfig) => ReturnType<typeof llmProvider.complete> }).complete({
-            prompt,
-            systemPrompt: finalSystemPrompt,
-            model: customConfig?.model,
-            maxTokens: 1000,
-          }, customConfig)
-        : await llmProvider.complete({
-            prompt,
-            systemPrompt: finalSystemPrompt,
-            model,
-            authToken,
-            maxTokens: 1000,
-          })
+      const result =
+        provider === 'custom'
+          ? await (
+              llmProvider as unknown as {
+                complete: (
+                  req: Parameters<typeof llmProvider.complete>[0],
+                  config?: typeof customConfig
+                ) => ReturnType<typeof llmProvider.complete>
+              }
+            ).complete(
+              {
+                prompt,
+                systemPrompt: finalSystemPrompt,
+                model: customConfig?.model,
+                maxTokens: 1000,
+              },
+              customConfig
+            )
+          : await llmProvider.complete({
+              prompt,
+              systemPrompt: finalSystemPrompt,
+              model,
+              authToken,
+              maxTokens: 1000,
+            })
 
       const response: OptimizeResponse = {
         optimized: result.content,
@@ -343,7 +376,13 @@ export function createApp(config: AppConfig = {}) {
     // Validate custom config for custom provider
     if (provider === 'custom') {
       if (!customConfig?.baseUrl || !customConfig?.apiKey || !customConfig?.model) {
-        return sendError(c, Errors.invalidParams('customConfig', 'Custom provider requires baseUrl, apiKey, and model'))
+        return sendError(
+          c,
+          Errors.invalidParams(
+            'customConfig',
+            'Custom provider requires baseUrl, apiKey, and model'
+          )
+        )
       }
     }
 
@@ -351,22 +390,33 @@ export function createApp(config: AppConfig = {}) {
       const llmProvider = getLLMProvider(provider as LLMProviderType)
 
       // Custom provider needs customConfig passed to complete()
-      const result = provider === 'custom'
-        ? await (llmProvider as unknown as { complete: (req: Parameters<typeof llmProvider.complete>[0], config?: typeof customConfig) => ReturnType<typeof llmProvider.complete> }).complete({
-            prompt,
-            systemPrompt: DEFAULT_TRANSLATE_SYSTEM_PROMPT,
-            model: customConfig?.model,
-            maxTokens: 1000,
-            temperature: 0.3,
-          }, customConfig)
-        : await llmProvider.complete({
-            prompt,
-            systemPrompt: DEFAULT_TRANSLATE_SYSTEM_PROMPT,
-            model,
-            authToken,
-            maxTokens: 1000,
-            temperature: 0.3, // Lower temperature for more accurate translation
-          })
+      const result =
+        provider === 'custom'
+          ? await (
+              llmProvider as unknown as {
+                complete: (
+                  req: Parameters<typeof llmProvider.complete>[0],
+                  config?: typeof customConfig
+                ) => ReturnType<typeof llmProvider.complete>
+              }
+            ).complete(
+              {
+                prompt,
+                systemPrompt: DEFAULT_TRANSLATE_SYSTEM_PROMPT,
+                model: customConfig?.model,
+                maxTokens: 1000,
+                temperature: 0.3,
+              },
+              customConfig
+            )
+          : await llmProvider.complete({
+              prompt,
+              systemPrompt: DEFAULT_TRANSLATE_SYSTEM_PROMPT,
+              model,
+              authToken,
+              maxTokens: 1000,
+              temperature: 0.3, // Lower temperature for more accurate translation
+            })
 
       const translateResponse: TranslateResponse = {
         translated: result.content,

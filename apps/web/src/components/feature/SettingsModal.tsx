@@ -47,8 +47,12 @@ interface SettingsModalProps {
   setTranslateModel: (model: string) => void
   setAutoTranslate: (enabled: boolean) => void
   setCustomSystemPrompt: (prompt: string) => void
-  setCustomOptimizeConfig: (config: Partial<{ baseUrl: string; apiKey: string; model: string }>) => void
-  setCustomTranslateConfig: (config: Partial<{ baseUrl: string; apiKey: string; model: string }>) => void
+  setCustomOptimizeConfig: (
+    config: Partial<{ baseUrl: string; apiKey: string; model: string }>
+  ) => void
+  setCustomTranslateConfig: (
+    config: Partial<{ baseUrl: string; apiKey: string; model: string }>
+  ) => void
 }
 
 export function SettingsModal({
@@ -150,7 +154,13 @@ export function SettingsModal({
         fetchOptimizeModels()
       }
     }
-  }, [llmSettings.llmProvider, llmSettings.customOptimizeConfig, optimizeCustomModels.length, isLoadingOptimizeModels, fetchOptimizeModels])
+  }, [
+    llmSettings.llmProvider,
+    llmSettings.customOptimizeConfig,
+    optimizeCustomModels.length,
+    isLoadingOptimizeModels,
+    fetchOptimizeModels,
+  ])
 
   useEffect(() => {
     if (llmSettings.translateProvider === 'custom') {
@@ -159,7 +169,13 @@ export function SettingsModal({
         fetchTranslateModels()
       }
     }
-  }, [llmSettings.translateProvider, llmSettings.customTranslateConfig, translateCustomModels.length, isLoadingTranslateModels, fetchTranslateModels])
+  }, [
+    llmSettings.translateProvider,
+    llmSettings.customTranslateConfig,
+    translateCustomModels.length,
+    isLoadingTranslateModels,
+    fetchTranslateModels,
+  ])
 
   // API Config computed values
   const providerConfig = PROVIDER_CONFIGS[provider]
@@ -180,11 +196,7 @@ export function SettingsModal({
         {/* Header */}
         <div className="flex justify-between items-center p-4 border-b border-zinc-800">
           <h2 className="text-zinc-100 font-medium">{t('apiConfig.settings')}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-zinc-500 hover:text-zinc-300"
-          >
+          <button type="button" onClick={onClose} className="text-zinc-500 hover:text-zinc-300">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -369,22 +381,23 @@ export function SettingsModal({
                   <div>
                     <div className="flex items-center justify-between">
                       <Label className="text-zinc-400 text-xs">Model</Label>
-                      {llmSettings.customOptimizeConfig.baseUrl && llmSettings.customOptimizeConfig.apiKey && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={fetchOptimizeModels}
-                          disabled={isLoadingOptimizeModels}
-                          className="h-5 px-1.5 text-zinc-500 hover:text-zinc-300"
-                        >
-                          {isLoadingOptimizeModels ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <RefreshCw className="w-3 h-3" />
-                          )}
-                        </Button>
-                      )}
+                      {llmSettings.customOptimizeConfig.baseUrl &&
+                        llmSettings.customOptimizeConfig.apiKey && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={fetchOptimizeModels}
+                            disabled={isLoadingOptimizeModels}
+                            className="h-5 px-1.5 text-zinc-500 hover:text-zinc-300"
+                          >
+                            {isLoadingOptimizeModels ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <RefreshCw className="w-3 h-3" />
+                            )}
+                          </Button>
+                        )}
                     </div>
                     {optimizeCustomModels.length > 0 ? (
                       <Select
@@ -544,22 +557,23 @@ export function SettingsModal({
                   <div>
                     <div className="flex items-center justify-between">
                       <Label className="text-zinc-400 text-xs">Model</Label>
-                      {llmSettings.customTranslateConfig.baseUrl && llmSettings.customTranslateConfig.apiKey && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={fetchTranslateModels}
-                          disabled={isLoadingTranslateModels}
-                          className="h-5 px-1.5 text-zinc-500 hover:text-zinc-300"
-                        >
-                          {isLoadingTranslateModels ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <RefreshCw className="w-3 h-3" />
-                          )}
-                        </Button>
-                      )}
+                      {llmSettings.customTranslateConfig.baseUrl &&
+                        llmSettings.customTranslateConfig.apiKey && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={fetchTranslateModels}
+                            disabled={isLoadingTranslateModels}
+                            className="h-5 px-1.5 text-zinc-500 hover:text-zinc-300"
+                          >
+                            {isLoadingTranslateModels ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <RefreshCw className="w-3 h-3" />
+                            )}
+                          </Button>
+                        )}
                     </div>
                     {translateCustomModels.length > 0 ? (
                       <Select
